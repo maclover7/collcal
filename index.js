@@ -1,3 +1,8 @@
+if (!process.env.RUN) {
+  console.log('not running...');
+}
+
+
 var request = require('request-promise').defaults({ jar: true });
 var cheerio = require('cheerio');
 var Promise = require('bluebird');
