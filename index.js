@@ -1,6 +1,7 @@
 var request = require('request-promise').defaults({ jar: true });
 var cheerio = require('cheerio');
 var Promise = require('bluebird');
+var TerminalTable = require('terminal-table');
 
 ///
 
@@ -63,10 +64,20 @@ function convertRawVisits(args) {
 
       $(rawVisit).children('td').each(function(i, rawVisitInfo) {
         if (i === 1 || i === 2) {
-          var attrName = i === 1 ? 'name' : 'date';
-          var attrVal = rawVisitInfo.children[0].data.replace(/(\r\n|\n|\r)/gm, "").trim();
+          var isLink = function(el) {
+            return el.name === 'a';
+          }
+
+          if (rawVisitInfo.children.some(isLink)) {
+            var parentEl = rawVisitInfo.children.find(isLink);
+          } else {
+            var parentEl = rawVisitInfo;
+          }
+
+          var attrVal = parentEl.children[0].data.replace(/(\r\n|\n|\r)/gm, "").trim();
 
           if (attrVal) {
+            var attrName = i === 1 ? 'name' : 'date';
             serializedVisit[attrName] = attrVal;
           }
         }
@@ -83,6 +94,25 @@ function convertRawVisits(args) {
   });
 }
 
+function notifyUser(serializedVisits) {
+  return new Promise(function(resolve, reject) {
+    var t = new TerminalTable({
+      leftPadding: 5,
+      rightPadding: 5
+    });
+
+    serializedVisits.forEach(function(serializedVisit) {
+      t.push(
+        [serializedVisit.name, serializedVisit.date]
+      );
+    });
+
+    console.log("" + t);
+
+    resolve();
+  });
+}
+
 ///
 
 seedCookies()
@@ -90,6 +120,7 @@ seedCookies()
 .then(getRawVisits)
 .then(ingestRawVisits)
 .then(convertRawVisits)
-.then(function(serializedVisits) {
-  console.log(serializedVisits);
+.then(notifyUser)
+.then(function() {
+  console.log('successfully completed a run!');
 });
