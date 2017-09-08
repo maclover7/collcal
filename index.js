@@ -6,6 +6,9 @@ var TerminalTable = require('terminal-table');
 ///
 
 var ENV = {
+  MAILGUN_DOMAIN: process.env.MAILGUN_DOMAIN,
+  MAILGUN_KEY: process.env.MAILGUN_KEY,
+  MAILGUN_RECIPIENT: process.env.MAILGUN_RECIPIENT,
   NAVIANCE_SCHOOL_ID: process.env.NAVIANCE_SCHOOL_ID,
   NAVIANCE_USERNAME:  process.env.NAVIANCE_USERNAME,
   NAVIANCE_PASSWORD:  process.env.NAVIANCE_PASSWORD
@@ -107,9 +110,22 @@ function notifyUser(serializedVisits) {
       );
     });
 
-    console.log("" + t);
+    var mailgun = require('mailgun-js')({ apiKey: ENV.MAILGUN_KEY, domain: ENV.MAILGUN_DOMAIN });
 
-    resolve();
+    var data = {
+      from: `Collcal Bot <bot@${ENV.MAILGUN_DOMAIN}>`,
+      to: ENV.MAILGUN_RECIPIENT,
+      subject: 'Collcall Run',
+      text: ("" + t)
+    };
+
+    mailgun.messages().send(data, function(error, body) {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(body);
+      }
+    });
   });
 }
 
@@ -121,6 +137,9 @@ seedCookies()
 .then(ingestRawVisits)
 .then(convertRawVisits)
 .then(notifyUser)
-.then(function() {
-  console.log('successfully completed a run!');
+.then(function(mailResp) {
+  console.log('successfully completed a run: ' + JSON.stringify(mailResp));
+})
+.catch(function(err) {
+  console.log('err: ' + err);
 });
