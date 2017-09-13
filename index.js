@@ -97,26 +97,32 @@ function convertRawVisits(args) {
   });
 }
 
-function notifyUser(serializedVisits) {
+function createTable(serializedVisits) {
   return new Promise(function(resolve, reject) {
-    var t = new TerminalTable({
+    var table = new TerminalTable({
       leftPadding: 5,
       rightPadding: 5
     });
 
     serializedVisits.forEach(function(serializedVisit) {
-      t.push(
+      table.push(
         [serializedVisit.name, serializedVisit.date]
       );
     });
 
+    resolve(table);
+  });
+}
+
+function notifyUser(table) {
+  return new Promise(function(resolve, reject) {
     var mailgun = require('mailgun-js')({ apiKey: ENV.MAILGUN_KEY, domain: ENV.MAILGUN_DOMAIN });
 
     var data = {
       from: `Collcal Bot <bot@${ENV.MAILGUN_DOMAIN}>`,
       to: ENV.MAILGUN_RECIPIENT,
       subject: 'Collcall Run',
-      text: ("" + t)
+      text: ("" + table)
     };
 
     mailgun.messages().send(data, function(error, body) {
@@ -136,6 +142,7 @@ seedCookies()
 .then(getRawVisits)
 .then(ingestRawVisits)
 .then(convertRawVisits)
+.then(createTable)
 .then(notifyUser)
 .then(function(mailResp) {
   console.log('successfully completed a run: ' + JSON.stringify(mailResp));
